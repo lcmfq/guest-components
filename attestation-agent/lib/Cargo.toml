@@ -16,6 +16,7 @@ resource_uri.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
+token = { path = "../token", optional = true }
 tokio = { workspace = true, features = ["fs"] }
 toml.workspace = true
 tonic = { workspace = true, optional = true }
@@ -24,15 +25,22 @@ tonic = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
-default = ["sample_kbc", "rust-crypto"]
+default = ["sample_kbc", "rust-crypto", "coco_as"]
 
-cc_kbc = ["kbc/cc_kbc", "kbs_protocol/background_check"]
-all-attesters = ["kbc/all-attesters", "kbs_protocol?/all-attesters", "attester/all-attesters"]
-tdx-attester = ["kbc/tdx-attester", "kbs_protocol/tdx-attester", "attester/tdx-attester"]
-sgx-attester = ["kbc/sgx-attester", "kbs_protocol/sgx-attester", "attester/sgx-attester"]
-az-snp-vtpm-attester = ["kbc/az-snp-vtpm-attester", "kbs_protocol/az-snp-vtpm-attester", "attester/az-snp-vtpm-attester"]
-az-tdx-vtpm-attester = ["kbc/az-tdx-vtpm-attester", "kbs_protocol/az-tdx-vtpm-attester", "attester/az-tdx-vtpm-attester"]
-snp-attester = ["kbc/snp-attester", "kbs_protocol/snp-attester", "attester/snp-attester"]
+_token = []
+
+# Support Get Attestation Token from KBS
+kbs_as = ["token/kbs", "_token"]
+# Support Get Attestation Token from CoCo AS
+coco_as = ["token/coco_as", "_token"]
+
+cc_kbc = ["kbc/cc_kbc", "kbs_as", "coco_as"]
+all-attesters = ["kbc/all-attesters", "kbs_protocol?/all-attesters", "attester/all-attesters", "token?/all-attesters"]
+tdx-attester = ["kbc/tdx-attester", "kbs_protocol/tdx-attester", "attester/tdx-attester", "token?/tdx"]
+sgx-attester = ["kbc/sgx-attester", "kbs_protocol/sgx-attester", "attester/sgx-attester", "token?/sgx"]
+az-snp-vtpm-attester = ["kbc/az-snp-vtpm-attester", "kbs_protocol/az-snp-vtpm-attester", "attester/az-snp-vtpm-attester", "token?/az-snp-vtpm"]
+az-tdx-vtpm-attester = ["kbc/az-tdx-vtpm-attester", "kbs_protocol/az-tdx-vtpm-attester", "attester/az-tdx-vtpm-attester", "token?/az-tdx-vtpm"]
+snp-attester = ["kbc/snp-attester", "kbs_protocol/snp-attester", "attester/snp-attester", "token?/snp"]
 
 sample_kbc = ["kbc/sample_kbc"]
 eaa_kbc = ["kbc/eaa_kbc"]

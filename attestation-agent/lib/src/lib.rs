@@ -12,12 +12,12 @@ use async_trait::async_trait;
 use attester::{detect_tee_type, BoxedAttester};
 use kbc::{AnnotationPacket, KbcCheckInfo, KbcInstance, KbcModuleList};
 use resource_uri::ResourceUri;
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
-#[cfg(feature = "cc_kbc")]
-mod token;
-#[cfg(feature = "cc_kbc")]
-use token::get_kbs_token;
+mod config;
+
+#[cfg(feature = "_token")]
+use token::{GetToken, TokenType};
 
 /// Attestation Agent (AA for short) is a rust library crate for attestation procedure
 /// in confidential containers. It provides kinds of service APIs that need to make
@@ -31,7 +31,7 @@ use token::get_kbs_token;
 /// use attestation_agent::AttestationAgent;
 /// use attestation_agent::AttestationAPIs;
 ///
-/// let mut aa = AttestationAgent::new();
+/// let mut aa = AttestationAgent::default());
 ///
 /// let key_result = aa.decrypt_image_layer_annotation(
 ///     "sample_kbc",
@@ -88,22 +88,29 @@ pub trait AttestationAPIs {
     ) -> Result<()>;
 }
 
+#[allow(dead_code)]
 /// Attestation agent to provide attestation service.
-pub struct AttestationAgent {
+pub struct AttestationAgent<'a> {
+    config_file_path: &'a Path,
     kbc_module_list: KbcModuleList,
     kbc_instance_map: HashMap<String, KbcInstance>,
 }
 
-impl Default for AttestationAgent {
+impl<'a> Default for AttestationAgent<'a> {
     fn default() -> Self {
-        Self::new()
+        AttestationAgent {
+            config_file_path: &Path::new(config::DEFAULT_AA_CONFIG_PATH),
+            kbc_module_list: KbcModuleList::new(),
+            kbc_instance_map: HashMap::new(),
+        }
     }
 }
 
-impl AttestationAgent {
+impl<'a> AttestationAgent<'a> {
     /// Create a new instance of [AttestationAgent].
-    pub fn new() -> Self {
+    pub fn new(config_path: &'a str) -> Self {
         AttestationAgent {
+            config_file_path: &Path::new(config_path),
             kbc_module_list: KbcModuleList::new(),
             kbc_instance_map: HashMap::new(),
         }
@@ -135,7 +142,7 @@ impl AttestationAgent {
 }
 
 #[async_trait]
-impl AttestationAPIs for AttestationAgent {
+impl<'a> AttestationAPIs for AttestationAgent<'a> {
     async fn decrypt_image_layer_annotation(
         &mut self,
         kbc_name: &str,
@@ -174,23 +181,37 @@ impl AttestationAPIs for AttestationAgent {
             .await
     }
 
+    #[allow(unused_variables)]
+    #[allow(unreachable_code)]
     async fn get_token(&mut self, _token_type: &str) -> Result<Vec<u8>> {
-        #[cfg(feature = "cc_kbc")]
+        let token = match serde_json::from_str::<TokenType>(_token_type)
+            .map_err(|e| anyhow!("Unsupported token type: {e}"))?
         {
-            let token = match _token_type {
-                "kbs" => get_kbs_token().await?,
-                typ => bail!("Unsupported token type {typ}"),
-            };
+            #[cfg(any(feature = "cc_kbc", feature = "kbs_as"))]
+            TokenType::Kbs => {
+                let kbs_host_url = config::get_host_url().await?;
+                let kbs_token = token::kbs::KbsTokenGetter::default()
+                    .get_token(kbs_host_url)
+                    .await?;
+                kbs_token
+            }
+            #[cfg(feature = "coco_as")]
+            TokenType::CoCoAS => {
+                let as_url = match config::get_host_url().await {
+                    Ok(url) => url,
+                    Err(_) => {
+                        let config = config::Config::try_from(self.config_file_path)?;
+                        config.as_url.clone()
+                    }
+                };
+                let coco_as_token = token::coco_as::CoCoASTokenGetter::default()
+                    .get_token(as_url)
+                    .await?;
+                coco_as_token
+            }
+        };
 
-            Ok(token)
-        }
-
-        // TODO: remove the feature flags after refactoring AA. Currently, kbs_host_url
-        // is only set by user in aa_kbc_params when cc_kbc is enabled.
-        #[cfg(not(feature = "cc_kbc"))]
-        {
-            bail!("unimplemented!");
-        }
+        Ok(token)
     }
 
     /// Get TEE hardware signed evidence that includes the runtime data.
