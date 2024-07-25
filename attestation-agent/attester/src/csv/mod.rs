@@ -49,21 +49,24 @@ impl Attester for CsvAttester {
 
         let data = report_data.as_slice().try_into()?;
         let mut csv_guest = CsvGuest::open().unwrap();
-
+        println("get_report is start");
         let (attestation_report, report_signer) = csv_guest.get_report(Some(data), None).unwrap();
+        println("get_report is ok");
+        println("download_hskcek_from_kds is start");
 
         let cert_data = download_hskcek_from_kds(&report_signer.sn).await?;
-        let mut cert_data = &cert_data[..];
-        let hsk = ca::Certificate::decode(&mut cert_data, ()).unwrap();
-        let cek = csv::Certificate::decode(&mut cert_data, ()).unwrap();
-        let pek = csv::Certificate::decode(&mut &report_signer.pek_cert[..], ())?;
+        println("download_hskcek_from_kds is ok");
+       // let mut cert_data = &cert_data[..];
+         // let hsk = ca::Certificate::decode(&mut cert_data, ()).unwrap();
+         // let cek = csv::Certificate::decode(&mut cert_data, ()).unwrap();
+          //let pek = csv::Certificate::decode(&mut &report_signer.pek_cert[..], ())?;
 
-        let evidence = CsvEvidence {
-            attestation_report,
-            cert_chain: CertificateChain { hsk, cek, pek },
-            serial_number: report_signer.sn.to_vec(),
-        };
-        serde_json::to_string(&evidence).context("Serialize CSV evidence failed")
+         // let evidence = CsvEvidence {
+         //     attestation_report,
+          //    cert_chain: CertificateChain { hsk, cek, pek },
+          //    serial_number: report_signer.sn.to_vec(),
+         // };
+         // serde_json::to_string(&evidence).context("Serialize CSV evidence failed")
     }
 }
 
