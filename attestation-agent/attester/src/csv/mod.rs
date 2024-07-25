@@ -49,13 +49,13 @@ impl Attester for CsvAttester {
 
         let data = report_data.as_slice().try_into()?;
         let mut csv_guest = CsvGuest::open().unwrap();
-        println("get_report is start");
+        println!("get_report is start");
         let (attestation_report, report_signer) = csv_guest.get_report(Some(data), None).unwrap();
-        println("get_report is ok");
-        println("download_hskcek_from_kds is start");
+        println!("get_report is ok");
+        println!("download_hskcek_from_kds is start");
 
         let cert_data = download_hskcek_from_kds(&report_signer.sn).await?;
-        println("download_hskcek_from_kds is ok");
+        println!("download_hskcek_from_kds is ok");
        // let mut cert_data = &cert_data[..];
          // let hsk = ca::Certificate::decode(&mut cert_data, ()).unwrap();
          // let cek = csv::Certificate::decode(&mut cert_data, ()).unwrap();
